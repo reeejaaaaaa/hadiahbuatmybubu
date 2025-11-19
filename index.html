@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Eternal Love Story</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ==========================================================================
+           SECTION 1: CORE ARCHITECTURE & VARIABLES
+           ========================================================================== */
+        :root {
+            --primary: #ff2e63;
+            --secondary: #ffc2c2;
+            --accent: #eaeaea;
+            --dark-bg: #08040e;
+            --card-bg: rgba(20, 20, 35, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --font-header: 'Georgia', serif;
+            --font-body: 'Helvetica Neue', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: white;
+            font-family: var(--font-body);
+            height: 100vh;
+            overflow: hidden;
+            width: 100vw;
+        }
+
+        /* STARFIELD CANVAS (Background) */
+        #starfield {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ==========================================================================
+           SECTION 2: LAYOUT & SCROLLING
+           ========================================================================== */
+        
+        .app-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            overflow-y: auto;
+            padding: 40px 20px;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .screen.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* Glassmorphism Card */
+        .content-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 50px;
+            max-width: 900px;
+            width: 95%;
+            margin-top: 50px;
+            margin-bottom: 50px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            text-align: center;
+            position: relative;
+            z-index: 100;
+        }
+
+        /* ==========================================================================
+           SECTION 3: TYPOGRAPHY & BUTTONS
+           ========================================================================== */
+        
+        h1 {
+            font-family: var(--font-header);
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            background: linear-gradient(to bottom, #ff9a9e, #fecfef);
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 25px;
+            font-family: var(--font-header);
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: #d1d1d1;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            display: block;
+            margin: 30px auto 0 auto;
+            padding: 18px 50px;
+            font-size: 1.3rem;
+            background: linear-gradient(45deg, var(--primary), #ff6b6b);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(255, 46, 99, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 35px rgba(255, 46, 99, 0.6);
+        }
+
+        .stylish-input {
+            display: block;
+            margin: 20px auto 20px auto;
+            width: 80%;
+            max-width: 400px;
+            padding: 15px;
+            border-radius: 30px;
+            border: 2px solid var(--primary);
+            background: rgba(0,0,0,0.4);
+            color: white;
+            font-size: 1.2rem;
+            text-align: center;
+            outline: none;
+        }
+
+        /* Center Image Class */
+        .center-img {
+            width: 250px;
+            height: 250px;
+            object-fit: cover;
+            border-radius: 15px;
+            border: 2px solid var(--secondary);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin: 20px auto;
+            display: block;
+        }
+
+        /* ==========================================================================
+           SECTION 4: WALL PHOTOS (THE SIDE IMAGES)
+           ========================================================================== */
+        
+        .wall-gallery {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .wall-photo {
+            position: absolute;
+            width: 180px;
+            height: auto;
+            padding: 8px;
+            background: white;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            transition: all 0.5s ease;
+            opacity: 0.7;
+            pointer-events: auto;
+        }
+
+        .wall-photo img { width: 100%; height: 160px; object-fit: cover; display: block; }
+
+        .wall-photo:hover {
+            z-index: 500;
+            transform: scale(1.2) rotate(0deg) !important;
+            opacity: 1;
+            cursor: pointer;
+        }
+
+        /* Positions */
+        .wp-left-1 { top: 10%; left: 2%; transform: rotate(-12deg); }
+        .wp-left-2 { top: 40%; left: 5%; transform: rotate(8deg); }
+        .wp-left-3 { top: 70%; left: 3%; transform: rotate(-5deg); }
+        .wp-right-1 { top: 15%; right: 2%; transform: rotate(12deg); }
+        .wp-right-2 { top: 45%; right: 5%; transform: rotate(-8deg); }
+        .wp-right-3 { top: 75%; right: 3%; transform: rotate(10deg); }
+
+        @media (max-width: 1100px) { .wall-gallery { display: none; } }
+
+        /* ==========================================================================
+           SECTION 5: OUR STORY STYLING
+           ========================================================================== */
+        
+        .story-wrapper { display: flex; flex-direction: column; gap: 40px; width: 100%; }
+
+        .story-section-large {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 30px;
+            min-height: 300px;
+            transition: transform 0.3s;
+        }
+
+        .story-section-large:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(10px);
+        }
+
+        .story-img-large {
+            width: 40%; height: 250px; object-fit: cover;
+            border-radius: 15px; border: 3px solid var(--primary);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+
+        .story-content { width: 55%; text-align: left; }
+        .story-content h3 { font-size: 2rem; color: var(--secondary); margin-bottom: 15px; }
+
+        @media (max-width: 768px) {
+            .story-section-large { flex-direction: column; text-align: center; }
+            .story-img-large { width: 100%; height: 200px; }
+            .story-content { width: 100%; text-align: center; }
+        }
+
+        /* ==========================================================================
+           SECTION 6: GAME & EXTRAS
+           ========================================================================== */
+        
+        #game-canvas {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            cursor: crosshair;
+            margin: 20px auto;
+            display: block;
+        }
+
+        .music-btn {
+            position: fixed; bottom: 30px; right: 30px;
+            width: 60px; height: 60px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; z-index: 2000;
+            box-shadow: 0 0 20px var(--primary);
+            animation: spin 5s linear infinite;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        /* Typewriter Cursor */
+        .cursor {
+            display: inline-block;
+            width: 3px;
+            height: 1.2em;
+            background-color: #333;
+            margin-left: 2px;
+            animation: blink 1s infinite;
+            vertical-align: bottom;
+        }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    </style>
+</head>
+<body>
+
+    <audio id="bg-music" loop>
+        <source src="music.mp3" type="audio/mp3">
+    </audio>
+    <div class="music-btn" onclick="toggleMusic()">
+        <i class="fas fa-music" style="font-size: 24px; color: white;"></i>
+    </div>
+
+    <canvas id="starfield"></canvas>
+
+    <div class="app-wrapper">
+
+        <section id="page-lock" class="screen active">
+            <div class="wall-gallery">
+                <div class="wall-photo wp-left-1"><img src="bubu1.jpeg"></div>
+                <div class="wall-photo wp-left-2"><img src="bub5.jpeg"></div>
+                <div class="wall-photo wp-left-3"><img src="bubu3.jpeg"></div>
+                <div class="wall-photo wp-right-1"><img src="bubu2.jpeg"></div>
+                <div class="wall-photo wp-right-2"><img src="bubu7.jpeg"></div>
+                <div class="wall-photo wp-right-3"><img src="bubu4.jpeg"></div>
+            </div>
+
+            <div class="content-card" style="max-width: 500px;">
+                <i class="fas fa-lock" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></i>
+                <h1>Dilarang masuk kecuali bubu aku</h1>
+                <p>cuma bisa diakses sm my pretty cutie patootie gemes imut lucu my bubu.</p>
+                
+                <img src="bubu.jpeg" class="center-img">
+                
+                <p>syapa nama asli my bubu?</p>
+                <input type="text" id="password" class="stylish-input" placeholder="Enter Name...">
+                <p id="error-msg" style="color: red; font-size: 0.9rem; min-height: 20px;"></p>
+                
+                <button class="btn" onclick="attemptUnlock()">Buka Kuncinyeah</button>
+            </div>
+        </section>
+
+        <section id="page-angel" class="screen">
+            <div class="wall-gallery">
+                <div class="wall-photo wp-left-1"><img src="ghaidabayi2.jpg"></div>
+                <div class="wall-photo wp-left-2"><img src="ghaidabayi6.jpg"></div>
+                <div class="wall-photo wp-left-3"><img src="ghaidabayi3.jpg"></div>
+                <div class="wall-photo wp-right-1"><img src="ghaidabayi5.jpg"></div>
+                <div class="wall-photo wp-right-2"><img src="ghaidabayi7.jpg"></div>
+                <div class="wall-photo wp-right-3"><img src="ghaidabayi4.jpg"></div>
+            </div>
+
+            <div class="content-card">
+                <h1>Hari spesyaall</h1>
+                <h2 style="color: var(--secondary);">On 22nd November 2008</h2>
+                <p>Sejarah terukir, nama baru tercatat, tangis bahagia-pun bercucuran...</p>
+                <div style="margin: 30px auto; width: 300px; height: 300px; background: white; padding: 10px; transform: rotate(-3deg); box-shadow: 0 20px 40px black;">
+                    <img src="ghaidabayi1.jpg" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <p>Satu bidadari cantik jelita bernama Ghaida Azka Nabilah baru saja lahir.</p>
+                <button class="btn" onclick="navigate('page-welcome')">Kita lanjut ea ➡️</button>
+            </div>
+        </section>
+
+        <section id="page-welcome" class="screen">
+            <div class="wall-gallery">
+                <div class="wall-photo wp-left-1"><img src="ghaida3.jpg"></div>
+                <div class="wall-photo wp-left-2"><img src="ghaida4.jpg"></div>
+                <div class="wall-photo wp-left-3"><img src="ghaida5.jpg"></div>
+                <div class="wall-photo wp-right-1"><img src="ghaida6.jpg"></div>
+                <div class="wall-photo wp-right-2"><img src="ghaida7.jpg"></div>
+                <div class="wall-photo wp-right-3"><img src="ghaida8.jpg"></div>
+            </div>
+
+            <div class="content-card">
+                <h1>Happy Birthday Ghaida!</h1>
+                <p>Well... aku bikin ini karena yeaa aku maw kaya kamu juga membuat sesuatu yang handmade hehehehe, hope you like it.</p>
+                
+                <img src="ghaida1.jpg" class="center-img">
+
+                <p>Yeaa ga banyak ciii tp yeah aku pengen kamu punya kenang-kenangan indah dari akuu.</p>
+                <button class="btn" onclick="navigate('page-story')">tekan untuk lanjut hehehe</button>
+            </div>
+        </section>
+
+        <section id="page-story" class="screen">
+            <div class="wall-gallery">
+                <div class="wall-photo wp-left-1"><img src="ghaidaber2.jpg"></div>
+                <div class="wall-photo wp-left-2"><img src="ghaidaber5.jpg"></div>
+                <div class="wall-photo wp-left-3"><img src="ghaidaber6.jpg"></div>
+                <div class="wall-photo wp-right-1"><img src="ghaidaber18.jpg"></div>
+                <div class="wall-photo wp-right-2"><img src="ghaidaber15.jpg"></div>
+                <div class="wall-photo wp-right-3"><img src="ghaidaber9.jpg"></div>
+            </div>
+
+            <div class="content-card" style="max-width: 1000px;">
+                <h1>Our Story So Far 📖</h1>
+                <p>Di scroll yeah sayangku cantikkuuu ehehee...</p>
+                
+                <div class="story-wrapper">
+                    <div class="story-section-large">
+                        <img src="ghaidachat.jpg" class="story-img-large">
+                        <div class="story-content">
+                            <h3>Our First Chat</h3>
+                            <p>Our first chat happened when we were destined to meet in the same committee, working on security for the pradita open house aokwokwokw.</p>
+                            <p><b>Date:</b> 20/11/2023 omg I just realized it's very close to your birthday aokwokwokw mau ultah malah kerja</p>
+                        </div>
+                    </div>
+                    <div class="story-section-large">
+                        <div class="story-content">
+                            <h3>Our First Date</h3>
+                            <p>Well kalo yang ini mah aku iseng coba coba ajak kamu barangkali maw jalan eh maw awkwkkw asyikk.</p>
+                            <p><b>Location:</b> Ngemall and Keliling bogor nayk mobil 🚗 vroom vroom hehe </p>
+                        </div>
+                        <img src="ghaidaber10.jpg" class="story-img-large">
+                    </div>
+                    <div class="story-section-large">
+                        <img src="Untitled design (1).png" class="story-img-large">
+                        <div class="story-content">
+                            <h3>Our Days in School</h3>
+                            <p>amwkwkwkw aduh ini kita ketemu dari jawh aja dadah dadahan, trs 3a trs di event, trs tiba tiba aku lulus akwkwkwkw.</p>
+                        </div>
+                    </div>
+                    <div class="story-section-large">
+                        <div class="story-content">
+                            <h3>Our LDR dayss</h3>
+                            <p>amwkwkwkkww aduuuh ini banyaakkk bangeeett kejadiannyaahh ceritanyaaahh semuanyaaahhh.</p>
+                        </div>
+                        <img src="Untitled design (2).png" class="story-img-large">
+                    </div>
+                    <div class="story-section-large">
+                        <img src="WhatsApp Image 2025-11-18 at 23.40.27_234394bc.jpg" class="story-img-large">
+                        <div class="story-content">
+                            <h3>Us Today</h3>
+                            <p>awkwkkwkw yeaaa kalo sekarang yeaa begituu begituuu teyuuss.Intinya mah You are my best friend, my soulmate, and my everything.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="navigate('page-game')">Abis ini kita mayn bentar yeaa hehe 🎮</button>
+            </div>
+        </section>
+
+        <section id="page-game" class="screen">
+            <div class="wall-gallery">
+                <div class="wall-photo wp-left-1"><img src="reja1.jpg"></div>
+                <div class="wall-photo wp-left-2"><img src="reja2.jpg"></div>
+                <div class="wall-photo wp-left-3"><img src="reja3.jpg"></div>
+                <div class="wall-photo wp-right-1"><img src="reja4.jpg"></div>
+                <div class="wall-photo wp-right-2"><img src="reja5.jpg"></div>
+                <div class="wall-photo wp-right-3"><img src="reja6.jpg"></div>
+            </div>
+
+            <div class="content-card">
+                <h1>tangkap 100 cinta dari akuuuu!</h1>
+                <p>tangkap cinta pakai cursor ataw jari kamuuu.</p>
+                <div style="display: flex; justify-content: center; gap: 40px; font-size: 1.5rem; font-weight: bold; margin-bottom: 10px;">
+                    <div>Score: <span id="score-display" style="color: var(--primary);">0</span> / 100</div>
+                    <div>Time: <span id="time-display">60</span>s</div>
+                </div>
+                <canvas id="game-canvas" width="350" height="450"></canvas>
+                <div id="game-controls" style="margin-top: 20px;">
+                    <button class="btn" onclick="startGame()">Start Game</button>
+                </div>
+                <div id="game-success" style="display: none; margin-top: 20px;">
+                    <h2>YEEEYY KAMU BERHASIL MENANGKAP 100 CINTA</h2>
+                    <button class="btn" onclick="navigate('page-letter')">Lanjut ke surat 💌</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-letter" class="screen">
+            <div class="wall-gallery">
+                <div class="wall-photo wp-left-1"><img src="ghaidaber14.jpg"></div>
+                <div class="wall-photo wp-left-2"><img src="ghaidaber13.jpg"></div>
+                <div class="wall-photo wp-left-3"><img src="ghaidaber11.jpg"></div>
+                <div class="wall-photo wp-right-1"><img src="WhatsApp Image 2025-11-18 at 23.40.20_24c6d5c9.jpg"></div>
+                <div class="wall-photo wp-right-2"><img src="ghaidaber16.jpg"></div>
+                <div class="wall-photo wp-right-3"><img src="ghaidaber4.jpg"></div>
+            </div>
+
+            <div class="content-card">
+                <h1>Surat aku buat bubu</h1>
+                
+                <div class="letter-box" style="background: #fff; color: #333; padding: 40px; border-radius: 10px; text-align: left; margin-bottom: 30px; min-height: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                    <div id="typewriter-container" style="font-family: 'Georgia', serif; font-size: 1.2rem; line-height: 1.8;">
+                        </div>
+                </div>
+
+                <button class="btn" onclick="navigate('page-gift')">Terakhir Hadihnyaa hehehhehe 🎁</button>
+            </div>
+        </section>
+
+        <section id="page-gift" class="screen">
+            <div class="wall-gallery">
+                <div class="wall-photo wp-left-1"><img src="hadiah 2.jpg"></div>
+                <div class="wall-photo wp-left-2"><img src="hadiah 3.jpg"></div>
+                <div class="wall-photo wp-left-3"><img src="hadiah4.jpg"></div>
+                <div class="wall-photo wp-right-1"><img src="hadiah5 (1).gif"></div>
+                <div class="wall-photo wp-right-2"><img src="hadiah5 (1).jpeg"></div>
+                <div class="wall-photo wp-right-3"><img src="hadiah5 (2).jpeg"></div>
+            </div>
+
+            <div class="content-card">
+                <h1>Ini aku ada hadiah buat kamuuu hewhhehe</h1>
+                <p>Sekarang kamu bisa teken hadiahnya untuk dibuka...</p>
+
+                <div id="gift-box" style="font-size: 6rem; cursor: pointer; animation: bounce 2s infinite; margin-top: 50px;" onclick="openGift()">
+                    🎁
+                </div>
+
+                <div id="gift-content" style="display: none; animation: popUp 0.5s;">
+                    <h2 style="color: #ff2e63; font-size: 3rem; margin-top: 20px;">KAMU DAPET PACAR GANTENG DAN BAIK HATI DAN SIAP MENGUSAHAKAN MASA DEPAN KITA BERSAMA EHEHEHHE</h2>
+                    <img src="hadiah1.jpg" style="width: 100%; border-radius: 15px; margin: 20px 0;">
+                    <p style="font-size: 1.4rem;">AWKWKWKW BERCANDA SAYANG, NANTI HADIAHNYA PAS KETEMU YEAA HEHEHE</p>
+                    
+                    <button id="replay-btn" class="btn" onclick="location.reload()">Tekan kalaw maw ulang dari awal. 🔄</button>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        
+        // 1. NAVIGATION SYSTEM
+        function navigate(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            const target = document.getElementById(screenId);
+            target.classList.add('active');
+            target.scrollTop = 0;
+            triggerConfettiMini();
+
+            // If navigating to letter page, start typing
+            if(screenId === 'page-letter') {
+                startTyping();
+            }
+        }
+
+        // 2. UNLOCK SYSTEM
+        function attemptUnlock() {
+            const input = document.getElementById('password').value;
+            const error = document.getElementById('error-msg');
+            if(input == "Ghaida Azka Nabilah") { 
+                navigate('page-angel');
+                document.getElementById('bg-music').play().catch(e => console.log("Interact to play music"));
+            } else {
+                error.innerText = "bukan loe!";
+            }
+        }
+
+        // 3. AUDIO SYSTEM
+        function toggleMusic() {
+            const audio = document.getElementById('bg-music');
+            if(audio.paused) audio.play();
+            else audio.pause();
+        }
+
+        // 4. TYPEWRITER ENGINE (For Letter Page)
+        const letterText = `Buat Ghaida,
+
+Selamat ulang tahun yang ke-17 yaa Ghaida sayaangg. I wish you all the happiness, love, and success in the world. Aku pengen kamu tau bahwa kamu ga sendirian, banyak orang di sekitar kamu yang nemenin kamu, aku juga pengen kamu selalu yakin dan optimis bahwa kamu bisa ngapain aja asal kamu percaya dan yakin sama diri kamu sendiri. Kamu itu hebat, kamu itu kuat dan kamu itu penuh dengan hal positif.
+
+Semangat terus yaa kejar mimpi kamuu dari lomba, urus segala macem, ujian segala macem, mau ke inggris, ke australi, ke singapur, keluar negeri, kemanapun, kejurusan apapun itu aku bakal terus dukung dan doain kamu agar kamu bisa dapet yang terbaik untuk kamu. Nikmatin yeah masa masa kelas 12 dan masa masa sama aku hehehe, aku bakal terus ada disini, dan aku harap kita bisa bareng bareng terus sampe nanti ke jenjang yang lebih serius sampe nanti selamanyaa aamiiinnn hehehehhe.
+
+Semoga kamu juga sehat selalu yaa Ghaidaa, dijaga terus kesehatannyaa jangan sampe sakiit, mimpi kamu besar kesehatan kamu juga harus besar yaa sayaangg hehehe. Mam yang banyaakk, minum yang banyaakk, gausah takut gemuukk, yeaa tp kalo takut jg gapapa cii akwkwkwkw, pokoknya yang penting kamu sehat teruus semangat teruusss.
+
+Makasih banyaaakk bangeeettt buat semua hal baik yang udah kamu bawa buat aku, makasih udah ada dan dukung aku selama ini, semua hal baik dan semua momen yang terjadi bareng kamu itu semua hal yang akan kusimpen, kuinget dan yeaa aku pertahanin hehehe.
+
+Every moment with you is a treasure, dan aku ga sabar untuk bisa membuat lebih banyak momen dan kenangan bareng kamu. You are my star, my heart, and my everything.
+
+Happy Birthday, my love.`;
+
+        let typingStarted = false;
+        function startTyping() {
+            if(typingStarted) return; // Run only once
+            typingStarted = true;
+            
+            const container = document.getElementById('typewriter-container');
+            container.innerHTML = ''; // Clear existing
+            
+            let i = 0;
+            const speed = 50; // Speed in ms
+
+            function type() {
+                if (i < letterText.length) {
+                    if(letterText.charAt(i) === '\n') {
+                        container.innerHTML += '<br>';
+                    } else {
+                        container.innerHTML += letterText.charAt(i);
+                    }
+                    i++;
+                    setTimeout(type, speed);
+                } else {
+                    // Add blinking cursor at end
+                    container.innerHTML += '<span class="cursor">|</span>';
+                }
+            }
+            type();
+        }
+
+        // 5. GIFT REVEAL SYSTEM
+        function openGift() {
+            const gift = document.getElementById('gift-box');
+            const content = document.getElementById('gift-content');
+            
+            gift.style.display = 'none';
+            content.style.display = 'block';
+            
+            // Massive Confetti
+            var duration = 3000;
+            var end = Date.now() + duration;
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+
+        function triggerConfettiMini() {
+            confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+        }
+
+        // 6. ADVANCED GAME ENGINE (HEART SHAPES)
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        let score = 0;
+        let time = 60;
+        let gameRunning = false;
+        let hearts = [];
+        let mouse = { x: 0, y: 0 };
+
+        function updateMouse(e) {
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            mouse.x = cx - rect.left;
+            mouse.y = cy - rect.top;
+        }
+        canvas.addEventListener('mousemove', updateMouse);
+        canvas.addEventListener('touchmove', updateMouse);
+
+        function drawHeart(ctx, x, y, size, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            var topCurveHeight = size * 0.3;
+            ctx.moveTo(x, y + topCurveHeight);
+            ctx.bezierCurveTo(x, y, x - size / 2, y, x - size / 2, y + topCurveHeight);
+            ctx.bezierCurveTo(x - size / 2, y + (size + topCurveHeight) / 2, x, y + (size + topCurveHeight) / 2, x, y + size);
+            ctx.bezierCurveTo(x, y + (size + topCurveHeight) / 2, x + size / 2, y + (size + topCurveHeight) / 2, x + size / 2, y + topCurveHeight);
+            ctx.bezierCurveTo(x + size / 2, y, x, y, x, y + topCurveHeight);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function startGame() {
+            score = 0;
+            time = 60;
+            hearts = [];
+            gameRunning = true;
+            document.getElementById('score-display').innerText = score;
+            document.getElementById('game-controls').style.display = 'none';
+
+            const timer = setInterval(() => {
+                if(!gameRunning) { clearInterval(timer); return; }
+                time--;
+                document.getElementById('time-display').innerText = time;
+                if(time <= 0) {
+                    gameRunning = false;
+                    if(score >= 100) winGame();
+                    else {
+                        alert("Time's up! Try again to reach 100 hearts.");
+                        document.getElementById('game-controls').style.display = 'block';
+                    }
+                }
+            }, 1000);
+            
+            gameLoop();
+        }
+
+        function gameLoop() {
+            if(!gameRunning) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if(Math.random() < 0.15) {
+                hearts.push({
+                    x: Math.random() * canvas.width,
+                    y: -30,
+                    size: Math.random() * 20 + 10,
+                    speed: Math.random() * 3 + 2,
+                    color: `hsl(${Math.random() * 50 + 330}, 100%, 60%)`
+                });
+            }
+            for(let i=0; i<hearts.length; i++) {
+                let h = hearts[i];
+                h.y += h.speed;
+                drawHeart(ctx, h.x, h.y, h.size, h.color);
+                let dist = Math.sqrt((mouse.x - h.x)**2 + (mouse.y - (h.y + h.size/2))**2);
+                if(dist < h.size) {
+                    score++;
+                    document.getElementById('score-display').innerText = score;
+                    hearts.splice(i, 1);
+                    i--;
+                } else if(h.y > canvas.height) {
+                    hearts.splice(i, 1);
+                    i--;
+                }
+            }
+            if(score >= 100) winGame();
+            else requestAnimationFrame(gameLoop);
+        }
+
+        function winGame() {
+            gameRunning = false;
+            document.getElementById('game-success').style.display = 'block';
+            confetti({ particleCount: 100, spread: 100, origin: { y: 0.6 } });
+        }
+
+        // 7. STARFIELD BACKGROUND
+        const starsCanvas = document.getElementById('starfield');
+        const sCtx = starsCanvas.getContext('2d');
+        let width, height, stars = [];
+
+        function initStars() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            starsCanvas.width = width;
+            starsCanvas.height = height;
+            stars = [];
+            for(let i=0; i<200; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 1.5,
+                    speed: Math.random() * 0.5
+                });
+            }
+        }
+
+        function animStars() {
+            sCtx.clearRect(0, 0, width, height);
+            sCtx.fillStyle = "white";
+            stars.forEach(star => {
+                star.y -= star.speed;
+                if(star.y < 0) star.y = height;
+                sCtx.beginPath();
+                sCtx.arc(star.x, star.y, star.radius, 0, Math.PI*2);
+                sCtx.fill();
+            });
+            requestAnimationFrame(animStars);
+        }
+
+        window.addEventListener('resize', initStars);
+        initStars();
+        animStars();
+
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes bounce { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-20px);} }
+            @keyframes popUp { 0% {transform: scale(0);} 100% {transform: scale(1);} }
+        `;
+        document.head.appendChild(styleSheet);
+
+    </script>
+</body>
+</html>
